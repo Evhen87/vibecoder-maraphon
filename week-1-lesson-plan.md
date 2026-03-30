@@ -358,9 +358,9 @@ https://random-words-here.trycloudflare.com
 ### 4.7 Подключаем webhook к Telegram (локальная разработка)
 1. Установить webhook на локальный туннель (в **третьем** терминале):
    ```bash
-   curl -X POST "https://api.telegram.org/bot8410206644:AAE9rblIfHrG58Mo1p9nUGnI6dOwaFvq_3s/setWebhook" \
+   curl -X POST "https://api.telegram.org/bot8761266310:AAGpKVxCjnw4FYNex5MmIUUP137yLGOy6jc/setWebhook" \
      -H "Content-Type: application/json" \
-     -d '{"url": "https://carrying-brooks-expansys-uniform.trycloudflare.com"}'
+     -d '{"url": "https://fossil-examines-variables-inter.trycloudflare.com"}'
    ```
    > URL без `/functions/v1/...` — Deno слушает на корне, не под path-ом
 2. Проверить:
