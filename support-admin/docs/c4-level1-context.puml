@@ -1,0 +1,27 @@
+@startuml
+' Подключаем стандартную библиотеку C4
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Заголовок
+title Диаграмма контекста (Level 1): SupportBot System
+
+' Пользователи (Actors)
+Person(admin, "Администратор", "Просматривает сообщения пользователей")
+Person(user, "Пользователь Telegram", "Отправляет сообщения в бот")
+
+' Наша система (System Boundary)
+System(support_system, "SupportBot System", "Обрабатывает сообщения и отображает их в админ-панели")
+
+' Внешние системы (External Systems)
+System_Ext(telegram_api, "Telegram API", "Доставляет сообщения в бот и отправляет ответы")
+System_Ext(supabase, "Supabase (PostgreSQL)", "Хранит все сообщения пользователей")
+
+' Связи (Relationships)
+Rel(user, telegram_api, "Отправляет текст", "HTTPS")
+Rel(telegram_api, support_system, "Шлет Webhook", "HTTP POST")
+
+' Связи нашей системы
+Rel(support_system, supabase, "Сохраняет и читает сообщения", "JS Client")
+Rel(admin, support_system, "Открывает в браузере", "HTTPS")
+
+@enduml

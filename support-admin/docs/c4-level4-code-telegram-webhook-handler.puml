@@ -1,0 +1,109 @@
+@startuml
+title Level 4 - TypeScript Type Definitions
+
+' Enums and Types
+enum MessageType {
+  TEXT
+  PHOTO
+  VIDEO
+  DOCUMENT
+}
+
+' Core Interfaces
+interface TelegramUpdate {
+  + update_id: number
+  + message?: TelegramMessage
+  + edited_message?: TelegramMessage
+}
+
+interface TelegramMessage {
+  + message_id: number
+  + from: TelegramUser
+  + chat: TelegramChat
+  + date: number
+  + text?: string
+  + entities?: MessageEntity[]
+}
+
+interface TelegramUser {
+  + id: number
+  + is_bot: boolean
+  + first_name: string
+  + last_name?: string
+  + username?: string
+  + language_code?: string
+}
+
+interface TelegramChat {
+  + id: number
+  + type: "private" | "group" | "supergroup" | "channel"
+  + title?: string
+  + username?: string
+  + first_name?: string
+  + last_name?: string
+}
+
+' Database Model
+class DBMessage {
+  + id: number
+  + telegram_chat_id: number
+  + username: string
+  + text: string
+  + created_at: Date
+}
+
+' Admin Panel Props
+class AdminPageProps {
+  + searchParams?: { [key: string]: string }
+}
+
+class MessageCardProps {
+  + message: DBMessage
+  + onDelete?: (id: number) => void
+  + showChatId?: boolean
+}
+
+' Supabase Response Types
+class SupabaseResponse<T> {
+  + data: T | null
+  + error: SupabaseError | null
+  + status: number
+  + statusText: string
+}
+
+class SupabaseError {
+  + message: string
+  + details: string
+  + hint: string
+  + code: string
+}
+
+' Relationships
+TelegramUpdate --> TelegramMessage : contains
+TelegramMessage --> TelegramUser : from
+TelegramMessage --> TelegramChat : chat
+DBMessage <|-- TelegramMessage : maps to
+MessageCardProps --> DBMessage : uses
+SupabaseResponse <.. DBMessage : generic type
+
+' Implementation notes
+note right of DBMessage
+  <b>Table mapping:</b>
+  messages {
+    id: bigint (PK)
+    telegram_chat_id: bigint
+    username: varchar
+    text: text
+    created_at: timestamp
+  }
+end note
+
+note left of SupabaseResponse
+  <b>Usage example:</b>
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    as SupabaseResponse<DBMessage[]>
+end note
+
+@enduml

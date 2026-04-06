@@ -4,8 +4,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 
 serve(async (req) => {
-  const { message } = await req.json();
-  if (!message?.text) return new Response("OK", { status: 200 });
+  // Обрабатываем GET-запросы (для проверки работоспособности)
+  if (req.method === "GET") {
+    return new Response("Webhook is running", { status: 200 });
+  }
+
+  // Проверяем Content-Type
+  const contentType = req.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    return new Response("Expected JSON", { status: 400 });
+  }
+
+  // Безопасно парсим JSON
+  let update;
+  try {
+    update = await req.json();
+  } catch (error) {
+    console.error("Ошибка парсинга JSON:", error);
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
+  const { message } = update;
+
+  // Проверяем наличие сообщения
+  if (!message?.text) {
+    return new Response("OK", { status: 200 });
+  }
 
   console.log(`Получено сообщение от ${message.from.first_name}: ${message.text}`);
 
@@ -29,16 +53,19 @@ serve(async (req) => {
   }
 
   // 3. Отправляем эхо-ответ пользователю
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: message.chat.id,
-      text: `🤖 Вы написали: ${message.text}`,
-    }),
-  });
-
-  console.log(`Эхо-ответ отправлен в чат ${message.chat.id}`);
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: message.chat.id,
+        text: `🤖 Вы написали: ${message.text}`,
+      }),
+    });
+    console.log(`Эхо-ответ отправлен в чат ${message.chat.id}`);
+  } catch (error) {
+    console.error("Ошибка отправки сообщения в Telegram:", error);
+  }
 
   return new Response("OK", { status: 200 });
 });

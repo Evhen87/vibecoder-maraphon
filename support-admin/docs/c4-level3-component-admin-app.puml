@@ -1,0 +1,24 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов (Level 3): Next.js Admin App
+
+Container(nextjs, "Next.js Admin App", "Next.js 14", "App Router, Server Components")
+
+' Компоненты внутри Next.js
+Component(page_component, "Page Component", "page.tsx", "Главная страница, Server Component")
+Component(supabase_client, "Supabase Client", "lib/supabase.ts", "Инициализирует подключение к БД")
+Component(query_builder, "Query Builder", "supabase.from().select()", "Строит SQL запросы")
+Component(data_fetcher, "Data Fetcher", "async/await", "Загружает данные на сервере")
+Component(ui_renderer, "UI Renderer", "TSX + Tailwind", "Рендерит карточки сообщений")
+Component(error_boundary, "Error Boundary", "try-catch", "Обрабатывает ошибки запросов")
+
+' Связи
+Rel(page_component, supabase_client, "Импортирует и использует")
+Rel(supabase_client, query_builder, "Создает запрос")
+Rel(query_builder, data_fetcher, "Выполняет", "SELECT * FROM messages")
+Rel(data_fetcher, ui_renderer, "Передает данные (messages)")
+Rel(page_component, error_boundary, "При ошибке загрузки")
+Rel(error_boundary, ui_renderer, "Показывает ошибку вместо данных")
+
+@enduml

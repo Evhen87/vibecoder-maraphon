@@ -1,0 +1,25 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Диаграмма компонентов (Level 3): Telegram Webhook Handler
+
+' Границы контейнера
+Container(webhook, "Telegram Webhook", "Deno", "Обработчик входящих сообщений")
+
+' Компоненты внутри вебхука
+Component(http_server, "HTTP Server", "Deno.serve", "Принимает POST запросы от Telegram")
+Component(json_parser, "JSON Parser", "req.json()", "Парсит входящие сообщения")
+Component(message_validator, "Message Validator", "Логика", "Проверяет наличие текста и структуры")
+Component(db_client, "Supabase Client", "@supabase/supabase-js", "Для записи в БД")
+Component(telegram_api, "Telegram API Client", "fetch()", "Отправляет эхо-ответы")
+Component(error_handler, "Error Handler", "try-catch", "Логирует ошибки")
+
+' Связи
+Rel(http_server, json_parser, "Получает тело запроса")
+Rel(json_parser, message_validator, "Передает parsed JSON")
+Rel(message_validator, db_client, "Сохраняет валидное сообщение", "INSERT")
+Rel(db_client, telegram_api, "После сохранения", "Отправляет эхо")
+Rel(http_server, error_handler, "При ошибке")
+Rel(error_handler, http_server, "Возвращает 400/500")
+
+@enduml

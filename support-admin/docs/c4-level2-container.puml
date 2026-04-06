@@ -1,0 +1,36 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров (Level 2): SupportBot System
+
+' Пользователь
+Person(admin, "Администратор")
+
+System_Boundary(cloud_system, "Cloud Infrastructure / Localhost") {
+
+    ' Контейнер 1: Telegram Webhook (Deno)
+    Container(webhook, "Telegram Webhook Handler", "Deno + TypeScript", "Принимает сообщения от Telegram API и пишет их в БД")
+
+    ' Контейнер 2: База данных
+    ContainerDb(database, "Supabase Database", "PostgreSQL", "Хранит таблицу 'messages'")
+
+    ' Контейнер 3: Админ-панель (Next.js)
+    Container(nextjs, "Admin Web App", "Next.js (React)", "Отдает страницу со списком сообщений, работает Server-Side рендеринг")
+
+    ' Контейнер 4: Supabase Client
+    Container(supabase_client, "Supabase Client", "SDK", "Используется для запросов к БД из Next.js")
+}
+
+' Внешние зависимости
+System_Ext(telegram, "Telegram Bot API", "")
+
+' Взаимодействия
+Rel(telegram, webhook, "POST /webhook", "JSON")
+Rel(webhook, database, "INSERT", "Supabase JS Client")
+Rel(webhook, telegram, "sendMessage (Эхо)", "HTTP")
+
+Rel(admin, nextjs, "GET /", "Browser")
+Rel(nextjs, supabase_client, "Fetch data")
+Rel(supabase_client, database, "SELECT", "Auth & SQL")
+
+@enduml
