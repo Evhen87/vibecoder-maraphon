@@ -1,21 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import type { Database } from "../_shared/database.types.ts";
+
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
 
+function normalizeOptional(value: string | undefined, maxLength: number) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.slice(0, maxLength);
+}
+
 serve(async (req) => {
-  // Обрабатываем GET-запросы (для проверки работоспособности)
   if (req.method === "GET") {
     return new Response("Webhook is running", { status: 200 });
   }
 
-  // Проверяем Content-Type
   const contentType = req.headers.get("content-type");
   if (!contentType || !contentType.includes("application/json")) {
     return new Response("Expected JSON", { status: 400 });
   }
 
-  // Безопасно парсим JSON
   let update;
   try {
     update = await req.json();
@@ -26,25 +35,75 @@ serve(async (req) => {
 
   const { message } = update;
 
-  // Проверяем наличие сообщения
   if (!message?.text) {
     return new Response("OK", { status: 200 });
   }
 
-  console.log(`Получено сообщение от ${message.from.first_name}: ${message.text}`);
+  const messageText = message.text.trim();
+  const chatId = message.chat.id;
+  const firstName = normalizeOptional(message.from.first_name, 64);
+  const lastName = normalizeOptional(message.from.last_name, 64);
+  const username = normalizeOptional(message.from.username, 32);
+  const displayName = firstName ?? username ?? "Unknown";
 
-  // 1. Создаём клиент Supabase
-  const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  console.log(`Получено сообщение от ${displayName}: ${messageText}`);
+
+  const supabase = createClient<Database>(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // 2. Сохраняем сообщение в БД
-  const { error } = await supabase.from("messages").insert({
-    telegram_chat_id: message.chat.id,
-    username: message.from.first_name || "Unknown",
-    text: message.text,
-  });
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .upsert(
+      {
+        telegram_chat_id: chatId,
+        first_name: firstName,
+        last_name: lastName,
+        username,
+      },
+      { onConflict: "telegram_chat_id" },
+    )
+    .select("id")
+    .single();
+
+  if (clientError) {
+    console.error("Ошибка upsert клиента:", clientError.message);
+    return new Response("DB client error", { status: 500 });
+  }
+
+  if (messageText === "/start") {
+    console.log(`Приветствие нового пользователя ${displayName} (Chat ID: ${chatId})`);
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text:
+          "👋 Здравствуйте! Опишите вашу проблему, и мы поможем.\n\n" +
+          "💡 *Примеры запросов:*\n" +
+          "- У меня проблема с оплатой\n" +
+          "- Как восстановить пароль?\n" +
+          "- Не работает приложение",
+        parse_mode: "Markdown",
+      }),
+    });
+
+    console.log(`Приветствие отправлено пользователю ${displayName}`);
+    return new Response("OK", { status: 200 });
+  }
+
+  const messageRow: Database["public"]["Tables"]["messages"]["Insert"] = {
+    client_id: client.id,
+    telegram_chat_id: chatId,
+    first_name: firstName,
+    last_name: lastName,
+    username,
+    text: messageText,
+  };
+
+  const { error } = await supabase.from("messages").insert(messageRow);
 
   if (error) {
     console.error("Ошибка записи в БД:", error.message);
@@ -52,17 +111,16 @@ serve(async (req) => {
     console.log("Сообщение сохранено в БД");
   }
 
-  // 3. Отправляем эхо-ответ пользователю
   try {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: message.chat.id,
-        text: `🤖 Вы написали: ${message.text}`,
+        chat_id: chatId,
+        text: `✅ Ваше сообщение получено. Мы ответим вам в ближайшее время.\n\n📝 Вы написали: ${messageText}`,
       }),
     });
-    console.log(`Эхо-ответ отправлен в чат ${message.chat.id}`);
+    console.log(`Подтверждение отправлено в чат ${chatId}`);
   } catch (error) {
     console.error("Ошибка отправки сообщения в Telegram:", error);
   }

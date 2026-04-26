@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
+import { assertSupabaseEnv } from "@/lib/supabase/env";
 
-export const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const { supabaseUrl, supabaseAnonKey } = assertSupabaseEnv();
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    persistSession: true,
+  },
+});
